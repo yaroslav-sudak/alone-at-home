@@ -1,103 +1,86 @@
+const { isBetween } = require("./Functions.js");
+const DynamicMatrix = require("./DynamicMatrix.js");
 class House {
-  // x0, y0, x1, y1 - number
-  // Array of coordinates of house edges [{x0: 0, y0: 0, x1: 1, y1: 0}, ...]
-  edges = [];
-
+  // x0, y0, x1, y1 - coordinates of the house border
+  // args -
+  // { x0: number, y0: number, x1: number, y1: number },{ x0: number, y0: number, x1: number, y1: number },...
+  // or
+  // [{ x0: number, y0: number, x1: number, y1: number },{ x0: number, y0: number, x1: number, y1: number },...]
   constructor(...args) {
-    this.addEdges(...args);
-  }
-
-  // Add edge to house [{x0: 0, y0: 0, x1: 1, y1: 0}, ...]
-  addEdges(...args) {
+    // Vertical edges of the house
+    // { x: number, y: [number, number] }
+    // Horizontal edges of the house
+    // { y: number, x: [number, number] }
+    this.edges = [];
+    if (args[0][0]) {
+      args = args[0];
+    }
     if (
       args.every(
-        (coordinate) =>
-          typeof coordinate === "object" &&
-          "x0" in coordinate &&
-          "y0" in coordinate &&
-          "x1" in coordinate &&
-          "y1" in coordinate
+        (arg) =>
+          arg.hasOwnProperty("x0") &&
+          arg.hasOwnProperty("y0") &&
+          arg.hasOwnProperty("x1") &&
+          arg.hasOwnProperty("y1")
       )
     ) {
-      args.forEach((coordinate) => {
-        let x0 = coordinate.x0;
-        let y0 = coordinate.y0;
-        let x1 = coordinate.x1;
-        let y1 = coordinate.y1;
-        this.edges.push({ x0, y0, x1, y1 });
+      args.forEach((arg) => {
+        if (arg.x0 === arg.x1) {
+          this.edges.push({ x: arg.x0, y: [arg.y0, arg.y1] });
+        } else if (arg.y0 === arg.y1) {
+          this.edges.push({ y: arg.y0, x: [arg.x0, arg.x1] });
+        }
       });
     } else {
-      throw new Error("Invalid coordinates");
+      throw new Error("Invalid arguments");
     }
   }
 
   isInHouse(x, y) {
-    this.edges.forEach((edge) => {
-      // Find all vertical edges with x coordinate greater than x
-      let verticalEdges = edge.filter((e) => e.x0 == e.x1 && e.x0 > x);
-      // Find all horizontal edges with y coordinate greater than y
-      let horizontalEdges = edge.filter((e) => e.y0 == e.y1 && e.y0 > y);
-      if (verticalEdges.length % 2 == 1 && horizontalEdges.length % 2 == 1) {
-        return true;
-      } else {
-        return false;
-      }
-    });
+    let vertical = this.edges.filter((edge) => typeof edge.x === "number");
+    let horizontal = this.edges.filter((edge) => typeof edge.y === "number");
+    if (
+      vertical.some(
+        (edge) => edge.x > x && isBetween(y, edge.y[0], edge.y[1])
+      ) &&
+      vertical.some(
+        (edge) => edge.x < x && isBetween(y, edge.y[0], edge.y[1])
+      ) &&
+      horizontal.some(
+        (edge) => edge.y > y && isBetween(x, edge.x[0], edge.x[1])
+      ) &&
+      horizontal.some(
+        (edge) => edge.y < y && isBetween(x, edge.x[0], edge.x[1])
+      )
+    ) {
+      return true;
+    }
+    return false;
   }
 
   draw() {
-    let field = [];
-    let maxY = this.edges[0].y0;
-    let maxX = this.edges[0].x0;
+    let field = new DynamicMatrix();
     this.edges.forEach((edge) => {
-      if (edge.x0 > maxX) {
-        maxX = edge.x0;
-      }
-      if (edge.y0 > maxY) {
-        maxY = edge.y0;
-      }
-    });
-
-    for (let i = 0; i <= maxY; i++) {
-      field[i] = " ".repeat(maxX + 1);
-    }
-
-    this.edges.forEach((edge) => {
-      if (edge.x0 == edge.x1) {
-        // If edge is vertical
-        let max = Math.max(edge.y0, edge.y1);
-        let min = Math.min(edge.y0, edge.y1);
-        for (let i = min; i <= max; i++) {
-          field[i] =
-            field[i].slice(0, edge.x0) + "#" + field[i].slice(edge.x0 + 1);
+      if (typeof edge.x === "number") {
+        for (
+          let y = Math.min(edge.y[0], edge.y[1]);
+          y <= Math.max(edge.y[0], edge.y[1]);
+          y++
+        ) {
+          field.set(edge.x, y, "#");
         }
-      } else if (edge.y0 == edge.y1) {
-        // If edge is horizontal
-        let max = Math.max(edge.x0, edge.x1);
-        let min = Math.min(edge.x0, edge.x1);
-        for (let i = min; i <= max; i++) {
-          field[edge.y0] =
-            field[edge.y0].slice(0, i) + "#" + field[edge.y0].slice(i + 1);
+      } else {
+        for (
+          let x = Math.min(edge.x[0], edge.x[1]);
+          x <= Math.max(edge.x[0], edge.x[1]);
+          x++
+        ) {
+          field.set(x, edge.y, "#");
         }
       }
     });
-    console.log(field);
+    console.log(field.join());
   }
-
-  // searchNearest(x, y) {
-  //   let closest = null;
-  //   let closestDistance = Infinity;
-  //   this.coordinates.forEach((coordinate) => {
-  //     if (coordinate.x === x || coordinate.y === y) {
-  //       let distance = Math.abs(coordinate.x - x) + Math.abs(coordinate.y - y);
-  //       if (distance < closestDistance) {
-  //         closest = coordinate;
-  //         closestDistance = distance;
-  //       }
-  //     }
-  //   });
-  //   return closest;
-  // }
 }
 
 module.exports = House;

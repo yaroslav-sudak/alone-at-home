@@ -1,90 +1,81 @@
-const House = require("./House");
+const Player = require("./Player.js");
+const House = require("./House.js");
+const Elf = require("./Elf.js");
 
 class Field {
-  /*Array of strings that represent the field
-    Each string represents a row
-    Example:
-    [
-      "#####",
-      "#   #",
-      "#   #",
-      "#   #",
-      "#####"
-    ]
-  */
-  field;
-  houses = [];
+  player = null;
+  house = null;
+  elves = [];
   constructor(input) {
-    this.field = input.map((row) =>
-      row
-        .split("")
-        .map((x) => (x === "#" || x === " " ? x : " "))
-        .join("")
-    );
-    console.log(this.field);
-  }
-
-  searchForHouses() {
-    for (let i = 0; i < this.field.length; i++) {
-      for (let j = 0; j < this.field[i].length; j++) {
-        if (this.field[i][j] === "#" && !this.houses.some((house) => house.isInHouse(j, i))) {
-          let house = new House();
+    let field = input.map((line) => line.split(""));
+    this.field = field;
+    for (let y = 0; y < field.length; y++) {
+      for (let x = 0; x < field[y].length; x++) {
+        if (field[y][x] === "#" && !this.house) {
+          this.house = this.searchHouseBorders(x, y);
+        } else if (field[y][x] === "o") {
+          this.elves.push(new Elf(x, y));
+        } else if (field[y][x] === "x") {
+          this.player = new Player(x, y);
         }
       }
     }
   }
 
-  // startCoordinate - {x: number, y: number}
-  searchHouseBorders(startCoordinate) {
-    let currentCoordinate = {...startCoordinate};
-    let house = new House();
-    let isHorisontal = true;
-    house.addCoordinates(currentCoordinate);
-    while (true) {
-      let next = this.searchForNext(currentCoordinate, isHorisontal);
-      console.log(next);
-      if (next === 0) {
-        house.addCoordinates(currentCoordinate);
-        isHorisontal = !isHorisontal;
-        continue;
-      }
-      if (isHorisontal) {
-        currentCoordinate.x += next;
-      } else {
-        currentCoordinate.y += next;
-      }
-      console.log(currentCoordinate, startCoordinate);
-      if (currentCoordinate === startCoordinate) {
-        break;
-      }
+  searchHouseBorders(x, y) {
+    let edges = [];
+    let prev = { x: x, y: y };
+    let next = { x: null, y: null };
+    while (next.x !== x || next.y !== y) {
+      next = this.horizontalFind(prev.x, prev.y);
+      edges.push({ x0: prev.x, y0: prev.y, x1: next.x, y1: next.y });
+      prev = next;
+      next = this.verticalFind(prev.x, prev.y);
+      edges.push({ x0: prev.x, y0: prev.y, x1: next.x, y1: next.y });
+      prev = next;
     }
-    return house;
+    return new House(edges);
   }
 
-  // coordinate - {x: number, y: number}
-  // isHorisontal - boolean
-  searchForNext(coordinate, isHorisontal) {
-    if (!isHorisontal) {
-      if (this.field[coordinate.y + 1][coordinate.x] === "#") {
-        return 1;
-      } else if (this.field[coordinate.y - 1][coordinate.x] === "#") {
-        return -1;
-      } else {
-        return 0;
-      }
+  horizontalFind(x, y) {
+    let iterator;
+    if (this.field[y][x - 1] && this.field[y][x - 1] === "#") {
+      iterator = -1;
+    } else if (this.field[y][x + 1] && this.field[y][x + 1] === "#") {
+      iterator = 1;
+    }
+
+    while (this.field[y][x + iterator] && this.field[y][x + iterator] === "#") {
+      x += iterator;
+    }
+    return { x, y };
+  }
+
+  verticalFind(x, y) {
+    let iterator;
+    if (this.field[y - 1][x] && this.field[y - 1][x] === "#") {
+      iterator = -1;
+    } else if (this.field[y + 1][x] && this.field[y + 1][x] === "#") {
+      iterator = 1;
+    }
+
+    while (this.field[y + iterator] && this.field[y + iterator][x] === "#") {
+      y += iterator;
+    }
+
+    return { x, y };
+  }
+
+  checkElvesInHouse() {
+    return this.elves.some((elf) => this.house.isInHouse(elf.x, elf.y));
+  }
+
+  aloneAtHome() {
+    if (this.checkElvesInHouse()) {
+      console.log("Player is not alone at home");
     } else {
-      if (this.field[coordinate.y][coordinate.x + 1] === "#") {
-        return 1;
-      } else if (this.field[coordinate.y][coordinate.x - 1] === "#") {
-        return -1;
-      } else {
-        return 0;
-      }
+      console.log("Player is alone at home");
     }
-  }
-
-  print() {
-    console.log(this.field);
   }
 }
 
